@@ -1,0 +1,35 @@
+#osx nasty .DS_Store
+.DS_Store
+
+#maven trash
+/target
+/build
+target/
+project/
+
+# in the event of an execution with failed clean up
+langoustine.pid
+
+# IntelliJ specific
+.idea
+*.iml
+*.ipr
+*.iws
+
+# Eclipse specific
+*.settings
+*.classpath
+*.project
+*.checkstyle
+
+#jvm & general trash
+*.class
+*.jar
+*.log
+**.swp
+logs/
+*#
+*~
+
+#java native error dumps
+hs_err_pid*
