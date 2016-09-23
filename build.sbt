@@ -5,6 +5,7 @@ val paradiseArtifactName = s"paradise_${scalaFullVersion}"
 
 val scaldingVersion = "0.15.0"
 val parquetVersion = "1.6.0rc7"
+val hiveExecVersion = "0.10.0"
 val jodaTimeVersion = "2.8.1"
 val jodaConvertVersion = "1.7"
 
@@ -58,7 +59,8 @@ lazy val scalding = (project in file("scalding")).
       "com.twitter" %% "scalding-core" % scaldingVersion,
       "com.twitter" %% "scalding-parquet" % scaldingVersion,
       "com.twitter" % "parquet-column" % parquetVersion,
-      "com.twitter" % "parquet-hadoop" % parquetVersion
+      "com.twitter" % "parquet-hadoop" % parquetVersion,
+      "org.apache.hive" % "hive-exec" % hiveExecVersion exclude("com.google.protobuf", "protobuf-java") exclude("org.apache.avro", "avro-mapred")
     )
   ).enablePlugins(TutPlugin).dependsOn(core)
 
