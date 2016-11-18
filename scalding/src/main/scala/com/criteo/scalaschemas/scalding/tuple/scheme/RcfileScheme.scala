@@ -18,86 +18,117 @@ import org.apache.hadoop.hive.serde2.columnar.{BytesRefArrayWritable, BytesRefWr
 import org.apache.hadoop.io.{LongWritable, WritableComparable}
 import org.apache.hadoop.mapred.{JobConf, OutputCollector, RecordReader}
 
-import scala.collection.JavaConverters._
-
-@deprecated
-case class DeprecatedSourceContext(key: LongWritable,
+case class SourceContext(key: LongWritable,
                          value: BytesRefArrayWritable)
 
-@deprecated
-case class DeprecatedSinkContext(byteStream: ByteStream.Output,
+case class SinkContext(byteStream: ByteStream.Output,
                        rowWritable: BytesRefArrayWritable,
                        colValRefs: Array[BytesRefWritable])
+
+object RcfileType {
+
+  sealed abstract class EnumVal(val name: String) extends Serializable {
+    def readObject(): AnyRef = Types.find(_.name == name).get
+
+    override def toString: String = name
+  }
+
+  case object String extends EnumVal("string")
+
+  /**
+    * A.k.a. Scala Short
+    */
+  case object SmallInt extends EnumVal("smallint")
+
+  case object Int extends EnumVal("int")
+
+  /**
+    * A.k.a. Scala Long
+    */
+  case object BigInt extends EnumVal("bigint")
+
+  case object Float extends EnumVal("float")
+
+  case object Double extends EnumVal("double")
+
+  case object Boolean extends EnumVal("boolean")
+
+  case object Timestamp extends EnumVal("timestamp")
+
+  val Types = IndexedSeq(String, SmallInt, Int, BigInt, Float, Double, Boolean, Timestamp)
+}
+
+case class RcfileColumn(name: String, index: Int, typ: RcfileType.EnumVal)
 
 /**
   * Read and write RCFile format in cascading.
   * <p>
   * Warning: Not all field types are supported.
   *
-  * @param names             Must contains the ordered list of fields names, can be smaller than the actual file to
-  *                          read: remaining columns will be ignored.
-  * @param types             If empty all the values will be considered as strings.
-  * @param selectedColumnIds If empty all the fields will be returned.
+  * @param columns List of columns to access.
   */
-@deprecated
-class RcFileScheme(val names: Fields,
-                   val types: Seq[String] = Nil,
-                   val selectedColumnIds: Seq[Int] = Nil)
-  extends Scheme[JobConf,
-    RecordReader[LongWritable, BytesRefArrayWritable],
-    OutputCollector[Object, Object],
-    DeprecatedSourceContext,
-    DeprecatedSinkContext](names, names) {
+class RcfileScheme(columns: Seq[RcfileColumn])
+  extends Scheme[JobConf, RecordReader[LongWritable, BytesRefArrayWritable], OutputCollector[Object, Object],
+    SourceContext, SinkContext](new Fields(columns.map(_.name): _*), new Fields(columns.map(_.name): _*)) {
 
   @transient lazy val columnarSerDe = new ColumnarSerDe
 
-  override def sourceConfInit(flowProcess: FlowProcess[JobConf],
-                              tap: Tap[JobConf, RecordReader[LongWritable, BytesRefArrayWritable], OutputCollector[Object, Object]],
-                              conf: JobConf): Unit = {
+  type TapAlias = Tap[JobConf, RecordReader[LongWritable, BytesRefArrayWritable], OutputCollector[Object, Object]]
+  type SourceCallAlias = SourceCall[SourceContext, RecordReader[LongWritable, BytesRefArrayWritable]]
+  type SinkCallAlias = SinkCall[SinkContext, OutputCollector[Object, Object]]
+
+  override def sourceConfInit(flowProcess: FlowProcess[JobConf], tap: TapAlias, conf: JobConf): Unit = {
     conf.setInputFormat(classOf[RCFileInputFormat[Object, Object]])
-    if (selectedColumnIds.nonEmpty) conf.set(READ_COLUMN_IDS_CONF_STR, selectedColumnIds.mkString(","))
+    conf.set(READ_COLUMN_IDS_CONF_STR, columns.map(_.index).mkString(","))
   }
 
-  override def sourcePrepare(flowProcess: FlowProcess[JobConf],
-                             sourceCall: SourceCall[DeprecatedSourceContext, RecordReader[LongWritable, BytesRefArrayWritable]]) {
-    val properties: Properties = {
-      val props: Properties = new Properties
+  override def sourcePrepare(flowProcess: FlowProcess[JobConf], sourceCall: SourceCallAlias) {
+    val properties = new Properties
 
-      props.put(LIST_COLUMNS, names.iterator().asScala.mkString(","))
-
-      if (types.nonEmpty) props.put(LIST_COLUMN_TYPES, types.mkString(","))
-
-      props
+    val columnByIndex = columns.groupBy(_.index).mapValues(_.head)
+    val names = (0 to columnByIndex.keys.max).map { i =>
+      columnByIndex.get(i) match {
+        case Some(RcfileColumn(name, _, _)) => name
+        case None => s"col$i"
+      }
+    }
+    val types = (0 to columnByIndex.keys.max).map { i =>
+      columnByIndex.get(i) match {
+        case Some(RcfileColumn(_, _, typ)) => typ
+        case None => "string"
+      }
     }
 
+    properties.put(LIST_COLUMNS, names.mkString(","))
+    properties.put(LIST_COLUMN_TYPES, types.mkString(","))
+
     columnarSerDe.initialize(flowProcess.getConfigCopy, properties)
-    sourceCall.setContext(DeprecatedSourceContext(
+    sourceCall.setContext(SourceContext(
       sourceCall.getInput.createKey,
       sourceCall.getInput.createValue
     ))
   }
 
-  override def sourceCleanup(flowProcess: FlowProcess[JobConf],
-                             sourceCall: SourceCall[DeprecatedSourceContext, RecordReader[LongWritable, BytesRefArrayWritable]]) {
+  override def sourceCleanup(flowProcess: FlowProcess[JobConf], sourceCall: SourceCallAlias) {
     sourceCall.setContext(null)
   }
 
-  override def source(flowProcess: FlowProcess[JobConf],
-                      sourceCall: SourceCall[DeprecatedSourceContext, RecordReader[LongWritable, BytesRefArrayWritable]]): Boolean = {
+  override def source(flowProcess: FlowProcess[JobConf], sourceCall: SourceCallAlias): Boolean = {
 
     val context = sourceCall.getContext
 
     if (!sourceCall.getInput.next(context.key, context.value)) return false
 
     val tuple: Tuple = sourceCall.getIncomingEntry.getTuple
+    tuple.clear()
+
     val value: BytesRefArrayWritable = context.value
     val struct: ColumnarStruct = columnarSerDe.deserialize(value).asInstanceOf[ColumnarStruct]
-    val fieldValues = struct.getFieldsAsList.asScala
-    tuple.clear()
 
     // Extract value from lazy types that are not serializable
     def convert(value: Any): Any = {
       value match {
+        case null => null
         case string: LazyString => string.getWritableObject.toString
         case integer: LazyInteger => integer.getWritableObject.get
         case long: LazyLong => long.getWritableObject.get
@@ -106,41 +137,35 @@ class RcFileScheme(val names: Fields,
         case boolean: LazyBoolean => boolean.getWritableObject.get
         case short: LazyShort => short.getWritableObject.get
         case timestamp: LazyTimestamp => timestamp.getWritableObject.getTimestamp
-        case null => null
         case _ => throw new IllegalArgumentException("Unsupported type: " + value.getClass + ".")
       }
     }
 
-    fieldValues.foreach(field => tuple.add(convert(field)))
+    columns.foreach { case (RcfileColumn(_, i, _)) => tuple.add(convert(struct.getField(i))) }
 
     true
   }
 
-  override def sinkConfInit(flowProcess: FlowProcess[JobConf],
-                            tap: Tap[JobConf, RecordReader[LongWritable, BytesRefArrayWritable], OutputCollector[Object, Object]],
-                            conf: JobConf) {
+  override def sinkConfInit(flowProcess: FlowProcess[JobConf], tap: TapAlias, conf: JobConf) {
     conf.setOutputKeyClass(classOf[WritableComparable[_]])
     conf.setOutputValueClass(classOf[BytesRefArrayWritable])
     conf.setOutputFormat(classOf[RCFileOutputFormat])
     conf.setInt(COLUMN_NUMBER_CONF_STR, getSinkFields.size)
   }
 
-  override def sinkPrepare(flowProcess: FlowProcess[JobConf],
-                           sinkCall: SinkCall[DeprecatedSinkContext, OutputCollector[Object, Object]]) {
-    sinkCall.setContext(DeprecatedSinkContext(
+  override def sinkPrepare(flowProcess: FlowProcess[JobConf], sinkCall: SinkCallAlias) {
+    sinkCall.setContext(SinkContext(
       new ByteStream.Output,
       new BytesRefArrayWritable,
       new Array[BytesRefWritable](getSinkFields.size)
     ))
   }
 
-  override def sinkCleanup(flowProcess: FlowProcess[JobConf],
-                           sinkCall: SinkCall[DeprecatedSinkContext, OutputCollector[Object, Object]]) {
+  override def sinkCleanup(flowProcess: FlowProcess[JobConf], sinkCall: SinkCallAlias) {
     sinkCall.setContext(null)
   }
 
-  override def sink(flowProcess: FlowProcess[JobConf],
-                    sinkCall: SinkCall[DeprecatedSinkContext, OutputCollector[Object, Object]]) {
+  override def sink(flowProcess: FlowProcess[JobConf], sinkCall: SinkCallAlias) {
     val tuple: Tuple = sinkCall.getOutgoingEntry.getTuple
     val context = sinkCall.getContext
 
