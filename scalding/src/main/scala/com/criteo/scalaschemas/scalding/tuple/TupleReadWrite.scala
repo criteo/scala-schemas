@@ -2,25 +2,27 @@ package com.criteo.scalaschemas.scalding.tuple
 
 import com.criteo.scalaschemas.SchemaMacroSupport
 import parquet.io.api.Binary
+import scala.util.Try
 
 trait TupleReadWrite[A] {
   def read(value: Any): A
+  def safeRead(value: Any, default: () => A): A =
+    if (value == null) default()
+    else Try(read(value)).getOrElse(default())
   def write(a: A): Any
 }
 
 object TupleReadWrite {
-  import scala.util._
   import SchemaMacroSupport.coerce
-
-  def safeReadWrite[A: TupleReadWrite](default: A) = new TupleReadWrite[A] {
-    def read(value: Any) = Try(implicitly[TupleReadWrite[A]].read(value)).toOption.getOrElse(default)
-    def write(a: A) = implicitly[TupleReadWrite[A]].write(a)
-  }
 
   implicit def optionReadWrite[A: TupleReadWrite]= new TupleReadWrite[Option[A]] {
     def read(value: Any) = value match {
       case null | "null" | """\\\\N""" => None
       case x => Some(implicitly[TupleReadWrite[A]].read(x))
+    }
+    override def safeRead(value: Any, default: () => Option[A]) = value match {
+      case null | "null" | """\\\\N""" => default()
+      case x => Try(Some(implicitly[TupleReadWrite[A]].read(x))).getOrElse(default())
     }
     def write(a: Option[A]) = a.orNull
   }
@@ -86,8 +88,9 @@ object TupleReadWrite {
     import org.joda.time._
     import org.joda.time.format._
     def read(value: Any) = coerce(value, classOf[org.joda.time.DateTime]) {
-      case x: Number => new DateTime(x.longValue, DateTimeZone.UTC)
-      case x: String => {
+      case x: Number =>
+        new DateTime(x.longValue, DateTimeZone.UTC)
+      case x: String =>
         val formats = List(
           ISODateTimeFormat.dateTimeParser,
           DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS") // used by sqoop imports
@@ -98,8 +101,8 @@ object TupleReadWrite {
           case (y, _) =>
             y
         }.getOrElse(sys.error(s"Invalid date format for $x"))
-      }
-      case x: DateTime => x
+      case x: DateTime =>
+        x
     }
     def write(a: DateTime) = a.toDateTime(DateTimeZone.UTC).toString(ISODateTimeFormat.dateTime())
   }

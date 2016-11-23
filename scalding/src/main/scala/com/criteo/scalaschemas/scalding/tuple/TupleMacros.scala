@@ -42,9 +42,10 @@ object TupleMacros {
     val constructorArgs: List[c.universe.Tree] = extractConstructorSymbols[A](c).zipWithIndex.map { case (symbol, pos) =>
       val getter = if (symbol.asTerm.isParamWithDefault) {
         q"""
-          _root_.com.criteo.scalaschemas.scalding.tuple.TupleReadWrite.safeReadWrite[${symbol.typeSignature}](
-            _root_.com.criteo.scalaschemas.SchemaMacroSupport.getDefaultConstructorArgument[${weakTypeOf[A]}, ${symbol.typeSignature}]($pos)
-          ).read(tuple.getObject($pos))
+          implicitly[_root_.com.criteo.scalaschemas.scalding.tuple.TupleReadWrite[${symbol.typeSignature}]].safeRead(
+            tuple.getObject($pos),
+            () => _root_.com.criteo.scalaschemas.SchemaMacroSupport.getDefaultConstructorArgument[${weakTypeOf[A]}, ${symbol.typeSignature}]($pos)
+          )
         """
       } else {
         q"implicitly[_root_.com.criteo.scalaschemas.scalding.tuple.TupleReadWrite[${symbol.typeSignature}]].read(tuple.getObject($pos))"
@@ -86,32 +87,29 @@ object TupleMacros {
 
     val constructorSymbols = extractConstructorSymbols[A](c)
 
-    val typeSettingTree: List[c.universe.Tree] = constructorSymbols.zipWithIndex.map {
-      case (symbol: Symbol, pos: Int) =>
-        q"""
-          tuple.set(
-            $pos,
-            implicitly[_root_.com.criteo.scalaschemas.scalding.tuple.TupleReadWrite[${symbol.typeSignature}]].write(
-              arg.${newTermName(symbol.name.decoded)}
-            )
-          )
-        """
+    val addToTuple: List[c.universe.Tree] = constructorSymbols.zipWithIndex.map { case (symbol, pos) =>
+      q"""
+        tuple.add(
+          implicitly[_root_.com.criteo.scalaschemas.scalding.tuple.TupleReadWrite[${symbol.typeSignature}]].write(arg.${newTermName(symbol.name.decoded)})
+        )
+      """
     }
 
-    val settingBlock = Block(typeSettingTree, Literal(Constant()))
     val tpe = weakTypeOf[A]
     val tupleArity = constructorSymbols.size
     c.Expr[TupleSetter[A]] {
       q"""
-      new _root_.com.twitter.scalding.TupleSetter[$tpe] {
-        override def apply(arg: $tpe): _root_.cascading.tuple.Tuple = {
+        new _root_.com.twitter.scalding.TupleSetter[$tpe] {
           val tuple = _root_.cascading.tuple.Tuple.size($tupleArity)
-          $settingBlock
-          tuple
+
+          override def apply(arg: $tpe): _root_.cascading.tuple.Tuple = {
+            tuple.clear
+            ..$addToTuple
+            tuple
+          }
+          override val arity: Int = $tupleArity
         }
-        override val arity: Int = $tupleArity
-      }
-     """
+      """
     }
   }
 

@@ -90,17 +90,17 @@ object SchemaMacroSupport {
     val method = {
       val k = classManifest[A].runtimeClass + "$lessinit$greater$default$" + (pos + 1)
 
-      defaultsCache.get(k).getOrElse {
-        val m = classManifest[A].runtimeClass.getMethod("$lessinit$greater$default$" + (pos + 1))
+      defaultsCache.getOrElse(k, {
+        val m = scala.reflect.classTag[A].runtimeClass.getMethod("$lessinit$greater$default$" + (pos + 1))
         defaultsCache += (k -> m)
         m
-      }
+      })
     }
     method.invoke(null).asInstanceOf[B]
   }
 
   def coerce[A](x: Any, to: Class[_])(expr: PartialFunction[Any, A]): A = {
-    try(expr(x)) catch { case e: Throwable =>
+    try expr(x) catch { case e: Throwable =>
       throw new Exception(
         s"Cannot coerce value `$x` to type $to", e
       )
