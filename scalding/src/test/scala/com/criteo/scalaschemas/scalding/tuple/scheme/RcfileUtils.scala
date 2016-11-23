@@ -15,12 +15,10 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.hive.ql.io.RCFile
 import org.apache.hadoop.mapred.{JobConf, OutputCollector, RecordReader}
 
-import scala.collection.immutable.ListMap
-
 /**
   * Not Unit tests as we don't want to commit large binary files.
   */
-object RcFileUtils {
+object RcfileUtils {
   /**
     * Not in git: get the file on hdfs
     */
@@ -32,28 +30,28 @@ object RcFileUtils {
   }
 
   def read_first_columns_of_a_bi_data_RC_file() {
-    val columns = ListMap[String, (String, Int)](
-      "timestamp" -> ("int", 0),
-      "nb_display" -> ("int", 1),
-      "host_ip" -> ("string", 2),
-      "host_site" -> ("string", 3),
-      "arbitrage_id" -> ("string", 4),
-      "impression_id" -> ("string", 5),
-      "display_id" -> ("string", 6),
-      "user_id" -> ("string", 7),
-      "referrer" -> ("string", 8), // www.facebook.com
-      "user_timestamp" -> ("int", 9), // null
-      "campaign_id" -> ("int", 10),
-      "banner_id" -> ("int", 11),
-      "merchant_id" -> ("int", 12),
-      "bizmodel_id" -> ("int", 13), // null
-      "v_revenue_euro" -> ("double", 14),
-      "v_revenue_type" -> ("int", 15), // null
-      "max_revenue_euro" -> ("double", 16),
-      "max_revenue_type" -> ("int", 17), // null
-      "display_revenue_euro" -> ("double", 18)
+    val columns = Seq(
+      RcfileColumn("unix_timestamp", 0, RcfileType.Int),
+      RcfileColumn("nb_display", 1, RcfileType.Int),
+      RcfileColumn("host_ip", 2, RcfileType.String),
+      RcfileColumn("host_site", 3, RcfileType.String),
+      RcfileColumn("arbitrage_id", 4, RcfileType.String),
+      RcfileColumn("impression_id", 5, RcfileType.String),
+      RcfileColumn("display_id", 6, RcfileType.String),
+      RcfileColumn("user_id", 7, RcfileType.String),
+      RcfileColumn("referrer", 8, RcfileType.String),
+      RcfileColumn("user_timestamp", 9, RcfileType.Int),
+      RcfileColumn("campaign_id", 10, RcfileType.Int),
+      RcfileColumn("banner_id", 11, RcfileType.Int),
+      RcfileColumn("merchant_id", 12, RcfileType.Int),
+      RcfileColumn("bizmodel_id", 13, RcfileType.Int),
+      RcfileColumn("v_revenue_euro", 14, RcfileType.Double),
+      RcfileColumn("v_revenue_type", 15, RcfileType.Int),
+      RcfileColumn("max_revenue_euro", 16, RcfileType.Double),
+      RcfileColumn("max_revenue_type", 17, RcfileType.Int),
+      RcfileColumn("display_revenue_euro", 18, RcfileType.Double)
     )
-    val columnNames: Fields = new Fields(columns.keys.toArray.asInstanceOf[Array[Comparable[String]]]: _*)
+    val columnNames: Fields = new Fields(columns.map(_.name).toArray.asInstanceOf[Array[Comparable[String]]]: _*)
 
     val textDelimited: Scheme[JobConf, RecordReader[_, _], OutputCollector[_, _], Array[AnyRef], Array[AnyRef]] = {
       val sinkCompression = true
@@ -63,7 +61,7 @@ object RcFileUtils {
 
     // Read and display on std
     {
-      val inputRc: Lfs = new Lfs(new RcFileScheme(columnNames), RcFilePath)
+      val inputRc: Lfs = new Lfs(new RcfileScheme(columns), RcFilePath)
       val dummyInput: Lfs = new Lfs(textDelimited, "/dummy/path")
       val connector: FlowConnector = new HadoopFlowConnector(new Properties)
       val flow: Flow[_] = connector.connect(inputRc, dummyInput, new Pipe("read"))

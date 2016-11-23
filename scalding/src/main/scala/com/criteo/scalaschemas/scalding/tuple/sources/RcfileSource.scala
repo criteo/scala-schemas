@@ -3,7 +3,7 @@ package com.criteo.scalaschemas.scalding.tuple.sources
 import cascading.scheme.Scheme
 import cascading.tap.SinkMode
 import cascading.tap.SinkMode._
-import com.criteo.scalaschemas.scalding.tuple.scheme.{RcFileScheme, RcfileColumn, RcfileScheme}
+import com.criteo.scalaschemas.scalding.tuple.scheme.{RcfileColumn, RcfileScheme}
 import com.criteo.scalaschemas.scalding.types.ScaldingType
 import com.twitter.scalding.{FixedPathSource, SchemedSource, Source}
 import org.apache.hadoop.mapred.{JobConf, OutputCollector, RecordReader}
