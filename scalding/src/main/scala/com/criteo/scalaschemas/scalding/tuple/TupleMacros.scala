@@ -100,13 +100,12 @@ object TupleMacros {
     c.Expr[TupleSetter[A]] {
       q"""
         new _root_.com.twitter.scalding.TupleSetter[$tpe] {
-          val tuple = _root_.cascading.tuple.Tuple.size($tupleArity)
-
           override def apply(arg: $tpe): _root_.cascading.tuple.Tuple = {
-            tuple.clear
+            val tuple = new _root_.cascading.tuple.Tuple
             ..$addToTuple
             tuple
           }
+
           override val arity: Int = $tupleArity
         }
       """
