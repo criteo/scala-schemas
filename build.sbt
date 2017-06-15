@@ -39,10 +39,9 @@ lazy val core = (project in file("core")).
 
 lazy val hive = (project in file("hive")).
   settings(commonSettings: _*).
-  settings(tutSettings: _*).
   settings(
     name := "scala-schemas-hive"
-  ).dependsOn(core)
+  ).enablePlugins(TutPlugin).dependsOn(core)
 
 lazy val vertica = (project in file("vertica")).
   settings(commonSettings: _*).
@@ -52,7 +51,6 @@ lazy val vertica = (project in file("vertica")).
 
 lazy val scalding = (project in file("scalding")).
   settings(commonSettings: _*).
-  settings(tutSettings: _*).
   settings(
     name := "scala-schemas-scalding",
 
@@ -62,5 +60,5 @@ lazy val scalding = (project in file("scalding")).
       "com.twitter" % "parquet-column" % parquetVersion,
       "com.twitter" % "parquet-hadoop" % parquetVersion
     )
-  ).dependsOn(core)
+  ).enablePlugins(TutPlugin).dependsOn(core)
 

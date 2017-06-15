@@ -5,7 +5,6 @@
 /target
 /build
 target/
-project/
 
 # in the event of an execution with failed clean up
 langoustine.pid
