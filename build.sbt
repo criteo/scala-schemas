@@ -1,7 +1,6 @@
 
-val scalaFullVersion = "2.10.6"
+val scalaFullVersion = "2.11.11"
 val paradiseVersion = "2.1.0"
-val paradiseArtifactName = s"paradise_${scalaFullVersion}"
 
 val scaldingVersion = "0.15.0"
 val parquetVersion = "1.6.0rc7"
@@ -14,27 +13,41 @@ val mockitoVersion = "1.9.5"
 
 lazy val commonSettings = Seq(
     organization := "com.criteo",
-    version := "0.1.0",
+    version := "0.2.0",
     scalaVersion := scalaFullVersion,
+
+    crossScalaVersions := Seq("2.11.11", "2.10.6"),
 
     resolvers ++= Seq(
       "conjars.org" at "http://conjars.org/repo",
       "cloudera" at "https://repository.cloudera.com/artifactory/cloudera-repos/"
     ),
 
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+
+        // if scala 2.11+ is used, quasiquotes are merged into scala-reflect
+        case Some((2, scalaMajor)) if scalaMajor >= 11 => libraryDependencies.value
+
+        // in Scala 2.10, quasiquotes are provided by macro paradise
+        case Some((2, 10)) => libraryDependencies.value ++ Seq(
+          compilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full),
+          "org.scalamacros" %% "quasiquotes" % paradiseVersion cross CrossVersion.binary
+        )
+      }
+    },
+
     libraryDependencies ++= Seq(
       "joda-time" % "joda-time" % jodaTimeVersion,
       "org.joda" % "joda-convert" % jodaConvertVersion,
-      compilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full),
-      "org.scala-lang" % "scala-reflect" % scalaFullVersion,
-      "org.scalamacros" % paradiseArtifactName % paradiseVersion,
-      "org.scalamacros" %% "quasiquotes" % paradiseVersion,
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.scalatest" %% "scalatest" % scalaTestVersion % "test",
       "org.mockito" % "mockito-all" % mockitoVersion % "test"
     )
   )
 
 lazy val root = (project in file(".")).
+  settings(commonSettings: _*).
   aggregate(core, hive, vertica, scalding)
 
 lazy val core = (project in file("core")).
