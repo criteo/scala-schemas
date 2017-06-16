@@ -1,4 +1,7 @@
 # Scala Schemas
+
+![Build status](https://api.travis-ci.org/criteo/scala-schemas.svg?branch=master)
+
 Scala Schemas leverages Scala's class definition syntax, which includes the ability to specify defaults, along with Scala's implicit parameter resolution to safely interact with external protocols and systems.
 
 Currently supported systems are:
