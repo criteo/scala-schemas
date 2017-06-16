@@ -17,6 +17,11 @@ lazy val commonSettings = Seq(
     version := "0.1.0-SNAPSHOT",
     scalaVersion := scalaFullVersion,
 
+    resolvers ++= Seq(
+      "conjars.org" at "http://conjars.org/repo",
+      "cloudera" at "https://repository.cloudera.com/artifactory/cloudera-repos/"
+    ),
+
     libraryDependencies ++= Seq(
       "joda-time" % "joda-time" % jodaTimeVersion,
       "org.joda" % "joda-convert" % jodaConvertVersion,
