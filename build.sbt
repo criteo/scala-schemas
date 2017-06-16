@@ -14,7 +14,7 @@ val mockitoVersion = "1.9.5"
 
 lazy val commonSettings = Seq(
     organization := "com.criteo",
-    version := "0.1.0-SNAPSHOT",
+    version := "0.1.0",
     scalaVersion := scalaFullVersion,
 
     resolvers ++= Seq(
