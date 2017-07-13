@@ -2,3 +2,10 @@ language: scala
 script: sbt +test
 jdk:
 - oraclejdk8
+before_deploy:
+- openssl aes-256-cbc -K $encrypted_0a51841a3dea_key -iv $encrypted_0a51841a3dea_iv
+  -in .travis/keys.tar.enc -out .travis/keys.tar -d
+- tar xvf .travis/keys.tar
+env:
+  global:
+    secure: IwTuw4FEmnWL3xHkTVw/a+9F1fupi8nYIbMlGQaH5AR5L0FnZqPjd1MaVWEmflsAnNpva1dKt6md8++KhaCHZg50qXlLvcM/yky6tAqIlJsvPDSSDEhldskdhBlLGSkg85GfnXAwbflf9XOlponkRDJTfbIJ8wImu7GiWyWJOeE46CPb5vLVQNrvtIdcwVA5qBsq0ulifyU8FgU1RcIMaDW17HvJ6tnyH2GDhl53NGyNsGC9MkWP4r7UN4PW9VS1/x/GtDDQj4+aVlcXHExBsMFK4mHbppiEC4WqKdtRMFYRYgsM32Avpe505R96qOJW2CxmieEW2T0nGwYiIHIjD0KWm1KBa7qqHAK9klEVfYQWaObRiJ3RLyAVDWjA9Lu9WsYBBowL2JsPZ4ep26zBgX8HsJ4a/I9NkMOo+uAdnIT4hpZbL8vUwTOLxKTw4ShPyqIExyOcq1qm8QAnEZbIqvPmR4uaTyHQdcoxUuda4Uwc1Dm99sDm1aEep/aaXhlAZDKq1qnchiAnItKRV0uz1nnsRpMvnubFZTh8U5YwYFiDwCS30Z0QHUgRYvgaShWYu2oKy4B2LE80qPZcM7KHVR8tImxFh3jeOMM92MRQxiCgl1NKDAVDBr4pUX5BErLmxSduzSGigpRP3ia+iOnlJ+SWvxqrWm0FyaIuV7usID4=
