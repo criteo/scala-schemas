@@ -88,6 +88,9 @@ lazy val commonSettings = Seq(
 
 lazy val root = (project in file(".")).
   settings(commonSettings: _*).
+  settings(
+    publishArtifact := false
+  ).
   aggregate(core, hive, vertica, scalding)
 
 lazy val core = (project in file("core")).
