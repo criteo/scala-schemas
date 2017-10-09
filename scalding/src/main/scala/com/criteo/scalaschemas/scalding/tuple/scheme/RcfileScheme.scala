@@ -186,8 +186,8 @@ class RcfileScheme(columns: Seq[RcfileColumn])
       colValRefs(i) = new BytesRefWritable
       rowWritable.set(i, colValRefs(i))
       sinkField(byteStream, tuple.getObject(i), tuple.getTypes()(i))
-      colValRefs(i).set(byteStream.getData, startPos, byteStream.getCount - startPos)
-      startPos = byteStream.getCount
+      colValRefs(i).set(byteStream.getData, startPos, byteStream.size() - startPos)
+      startPos = byteStream.size()
     }
 
     sinkCall.getOutput.collect(null, rowWritable)
