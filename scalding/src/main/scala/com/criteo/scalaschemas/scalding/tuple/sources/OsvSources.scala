@@ -9,15 +9,15 @@ import com.twitter.scalding.{DelimitedScheme, FixedPathSource, Source}
 trait OsvSources[T, K] {
   self: ScaldingType[T, K] =>
 
-  override def sink(partitionKey: K): Source = MultiplePartitionOsv(partitions(partitionKey))
+  val strict: Boolean = false
 
-  override def source(partitionKey: K): Source = MultiplePartitionOsv(partitions(partitionKey), fields)
+  override def sink(partitionKey: K): Source = MultiplePartitionDelimitedSchemeSource(partitions(partitionKey),
+    strict = strict,
+    separator = "\1")
 
-}
+  override def source(partitionKey: K): Source = MultiplePartitionDelimitedSchemeSource(partitions(partitionKey),
+    fields,
+    strict = strict,
+    separator = "\1")
 
-case class MultiplePartitionOsv(p: Seq[String],
-                                override val fields: Fields = Fields.ALL,
-                                override val sinkMode: SinkMode = SinkMode.REPLACE
-                               ) extends FixedPathSource(p: _*) with DelimitedScheme {
-  override val separator = "\1"
 }

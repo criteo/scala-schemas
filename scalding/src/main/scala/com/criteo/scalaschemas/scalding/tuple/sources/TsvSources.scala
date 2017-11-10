@@ -9,13 +9,13 @@ import com.twitter.scalding.{DelimitedScheme, FixedPathSource, Source}
 trait TsvSources[T, K] {
   self: ScaldingType[T, K] =>
 
-  override def sink(partitionKey: K): Source = MultiplePartitionTsv(partitions(partitionKey))
+  val strict: Boolean = false
 
-  override def source(partitionKey: K): Source = MultiplePartitionTsv(partitions(partitionKey), fields)
+  override def sink(partitionKey: K): Source = MultiplePartitionDelimitedSchemeSource(partitions(partitionKey),
+    strict = strict)
+
+  override def source(partitionKey: K): Source = MultiplePartitionDelimitedSchemeSource(partitions(partitionKey),
+    fields,
+    strict = strict)
 
 }
-
-case class MultiplePartitionTsv(p: Seq[String],
-                                override val fields: Fields = Fields.ALL,
-                                override val sinkMode: SinkMode = SinkMode.REPLACE
-                               ) extends FixedPathSource(p: _*) with DelimitedScheme
