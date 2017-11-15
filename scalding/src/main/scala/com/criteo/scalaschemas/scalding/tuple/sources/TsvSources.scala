@@ -9,7 +9,7 @@ import com.twitter.scalding.{DelimitedScheme, FixedPathSource, Source}
 trait TsvSources[T, K] {
   self: ScaldingType[T, K] =>
 
-  val strict: Boolean = false
+  val strict: Boolean = true
 
   override def sink(partitionKey: K): Source = MultiplePartitionDelimitedSchemeSource(partitions(partitionKey),
     strict = strict)
