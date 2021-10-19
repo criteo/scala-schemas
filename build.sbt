@@ -13,7 +13,7 @@ val mockitoVersion = "1.9.5"
 
 lazy val commonSettings = Seq(
   organization := "com.criteo.scala-schemas",
-  version := "0.4.0",
+  version := "0.4.1",
   scalaVersion := scalaFullVersion,
 
   crossScalaVersions := Seq("2.11.11", "2.10.6"),
